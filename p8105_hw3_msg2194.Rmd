@@ -15,8 +15,24 @@ knitr::opts_chunk$set(
 
 library(tidyverse)
 library(ggridges)
-library(p8105.datasets)
 library(patchwork)
 ```
+
+# Problem 1
+Load data
+```{r, get_brfss}
+library(p8105.datasets)
+data("brfss_smart2010") %>% 
+  janitor::clean_names() 
+```
+```{r, filter_brfss}
+brfss_smart2010 %>% 
+  filter(Topic == "Overall Health") %>% 
+  distinct(Response) %>% 
+  mutate(Response = factor(Response, levels = c("Excellent", "Very good", 
+                                                "Good", "Fair", "Poor"))) %>%
+  arrange(Response)
+```
+
 
 
