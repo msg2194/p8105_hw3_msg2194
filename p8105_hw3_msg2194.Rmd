@@ -1,0 +1,22 @@
+---
+title: "P8105 HW 3 MSG2194"
+author: "Saray Gonzalez"
+Date: "10/15/2018"
+output: github_document
+---
+
+```{r setup}
+
+knitr::opts_chunk$set(
+  fig.width = 6,
+  fig.asp = .6,
+  out.width = "90%"
+)
+
+library(tidyverse)
+library(ggridges)
+library(p8105.datasets)
+library(patchwork)
+```
+
+
