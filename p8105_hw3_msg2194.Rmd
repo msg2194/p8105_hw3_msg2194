@@ -13,6 +13,8 @@ knitr::opts_chunk$set(
   out.width = "90%"
 )
 
+theme_set(theme_bw() + theme(legend.position = "bottom"))
+
 library(tidyverse)
 library(ggridges)
 library(patchwork)
@@ -25,7 +27,7 @@ library(p8105.datasets)
 data("brfss_smart2010") %>% 
   janitor::clean_names() 
 ```
-```{r, filter_brfss}
+```{r, clean_brfss}
 brfss_smart2010 %>% 
   filter(Topic == "Overall Health") %>% 
   distinct(Response) %>% 
@@ -33,6 +35,69 @@ brfss_smart2010 %>%
                                                 "Good", "Fair", "Poor"))) %>%
   arrange(Response)
 ```
+### In 2002, which states were observed at 7 locations?
+This questions deals with the variables: Year, Locationabbr, possibly LocationID, and possily GeoLocation, LocationDesc or LocationID. Of all location specific variables, LocationDesc seems the most appropriate. The code below yields a viewable table where the states of CT, FL and NC appear in 7 locations of observation. 
+```{r}
+brfss_smart2010 %>%  
+  filter(Topic == "Overall Health", Year == 2002) %>% 
+  group_by(Locationabbr, Locationdesc) %>% 
+  summarize(n = n()) %>% 
+  count(Locationabbr) %>% View
+```
+### Make a “spaghetti plot” that shows the number of locations in each state from 2002 to 2010.
+
+Here we are interested in plotting year on the x axis, y is the number of locations observed per stated, which equates to the counties. Since the variable ", and "locationdesc" is a composite of both state and county, it is best to first separate this variable into its components, so tha we can county the total number of counties within the subset of each state, rather than counting the number of observations per state and county. We'll do this by using the 'group_by' + 'summarize' functions and then plot using the line geometry. The states will be in different colors and will all be graphed stacked against the same axis (x = year and y = number of locations).
+
+```{r}
+brfss_smart2010 %>%  
+  filter(Topic == "Overall Health") %>% 
+  separate(Locationdesc, into = c("st", "cty"), sep = "-") %>% 
+  group_by(Year, st) %>% 
+  summarize(n_cty = n()) %>% 
+  ggplot(aes(x = Year, y = n_cty, color = st)) +
+    geom_line() +
+    labs(
+      title = "Number of Locations Observed per State, 2002-2010",
+      y = "Number of Locations Observed"
+    ) +
+    theme(legend.background = element_rect(size = 0.5))
+```
+### Make a table showing, for the years 2002, 2006, and 2010, the mean and standard deviation of the proportion of “Excellent” responses across locations in NY State.
+
+Applied filters to Topic, Year, Response and Locationabbr first. Then used the function combination 'group_by' + 'Summarize' to calculate the requested summary statistics of central tendency. Finally, the results were exported using the 'knitr::kable' function
+```{r}
+brfss_smart2010 %>% 
+  filter(Topic == "Overall Health") %>% 
+  filter(Year %in% c("2002", "2006", "2010")) %>% 
+  filter(Response == "Excellent") %>% 
+  filter(Locationabbr == "NY") %>% 
+  group_by(Year, Response, Locationabbr) %>% 
+  summarize(mean_excellent = mean(Data_value), sd_excellent = sd(Data_value)) %>% 
+  knitr::kable(digits = 1)
+```
+###     For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.
+
+```{r}
+brfss_smart2010 %>% 
+  filter(Topic == "Overall Health") %>% 
+  group_by(Year, Locationabbr, Response) %>% 
+  summarize(average_response = mean(Data_value))
+```
+
+This one does not work
+```{r}
+brfss_smart2010 %>% 
+  filter(Topic == "Overall Health") %>% 
+  distinct(Response) %>% 
+  mutate(Response = factor(Response, levels = c("Excellent", "Very good", 
+                                                "Good", "Fair", "Poor"))) %>%
+  arrange(Response) %>% 
+  group_by(Year, Locationabbr, Response) %>% 
+  summarize(average_response = mean(Data_value))
+```
+
+
+
 
 
 
