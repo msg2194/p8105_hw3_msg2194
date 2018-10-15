@@ -6,14 +6,11 @@ output: github_document
 ---
 
 ```{r setup}
-
 knitr::opts_chunk$set(
   fig.width = 6,
   fig.asp = .6,
   out.width = "90%"
 )
-
-theme_set(theme_bw() + theme(legend.position = "bottom"))
 
 library(tidyverse)
 library(ggridges)
@@ -77,24 +74,102 @@ brfss_smart2010 %>%
 ```
 ###     For each year and state, compute the average proportion in each response category (taking the average across locations in a state). Make a five-panel plot that shows, for each response category separately, the distribution of these state-level averages over time.
 
+Raw data was manipulated as specified throughout this problem. Then, using the 'group_by' + 'summarize' function combination, the average response was calculated and then plotted using 'ggplot'.
 ```{r}
 brfss_smart2010 %>% 
   filter(Topic == "Overall Health") %>% 
   group_by(Year, Locationabbr, Response) %>% 
-  summarize(average_response = mean(Data_value))
+  summarize(average_response = mean(Data_value)) %>% 
+  ggplot(aes(x = Year, y = average_response)) +
+  facet_grid(. ~ Response) +
+  geom_violin() +
+  labs(
+    title = "State Average Response by Type 2002 -2010", y = "% Response"
+  ) + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), text = element_text(size = 9)) +
+  theme(plot.title = element_text(size = 9))
+  
 ```
 
-This one does not work
-```{r}
-brfss_smart2010 %>% 
-  filter(Topic == "Overall Health") %>% 
-  distinct(Response) %>% 
-  mutate(Response = factor(Response, levels = c("Excellent", "Very good", 
-                                                "Good", "Fair", "Poor"))) %>%
-  arrange(Response) %>% 
-  group_by(Year, Locationabbr, Response) %>% 
-  summarize(average_response = mean(Data_value))
+# Problem 2
+Load data
+```{r, get_instacart}
+library(p8105.datasets)
+data("instacart") %>% 
+  janitor::clean_names()
 ```
+Look at the data
+This dataset includes 15 variables and 1.38 million observations.
+This dataset seems to include orders, but the smallest unit of data is the items ordered in the orders. Therefore unique orders will be repeated according to the items within them. The data seem tidy, since each item is listed seperately, regardless of the order it was purchased with. To view the dataset, I used the 'names' function, called the data set within this R Markdown and used the 'View' function on the R console (not shown on this Markdown document).
+
+```{r}
+names(instacart)
+```
+```{r}
+instacart
+
+```
+### How many aisles are there, and which aisles are the most items ordered from?
+There are a total of 134 distinct aisles. The 'count' function was used to count the number of distinct aisle id.
+```{r}
+instacart %>% 
+  count(n_distinct(aisle_id))
+```
+
+By using the 'group_by' + 'summarize' function combination, the total number of orders was calculated for each aisle to yield a tibble that lists the aisles most ordered from in desceing order. The aisles most ordered from are fresh vegetables, fresh fruits and packaged vegetables and fruits.
+```{r}
+instacart %>% 
+  group_by(aisle, order_id) %>% 
+  summarize(total_count = n()) %>% 
+  group_by(aisle) %>% 
+  summarize(total_order = sum(total_count)) %>% 
+  arrange(desc(total_order))
+```
+
+### Make a plot that shows the number of items ordered in each aisle. Order aisles sensibly, and organize your plot so others can read it.
+
+Again, using the 'group_by' + 'summarize' function combination, the most number of orders per aisle was computed and then plotted with a histogram geometry. The aisles on the x axis were ordered from the most number orders to the least number of orders, from left to right. To make it more appealing, the departments to which the aisles belong to dictated the color fill for the aisle histogram bars.
+
+```{r}
+instacart %>% 
+  group_by(aisle, aisle_id, department) %>% 
+  summarize(orders_per_aisle = n()) %>% 
+  arrange(desc(orders_per_aisle)) %>% 
+  ggplot(aes(fct_reorder(aisle, desc(orders_per_aisle)), orders_per_aisle, fill = department)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1), text = element_text(size = 9))+
+  labs(title = "Orders per Aisle, from most to least utilized",
+       y = "Orders per Aisle") +
+  scale_x_discrete("Aisle", breaks = c("fresh vegetables", "bread", "cereal", "paper goods", "cookie cakes", "tortillas flat bread", "poultry counter", "prepared meals", "oral hygiene", "beers coolers", "hair care", "cocoa drink mixes", "bulk dried fruits vegetables", "beauty")) +
+  theme(legend.background = element_rect(size = 0.5))
+  
+```
+### Make a table showing the most popular item in each of the aisles “baking ingredients”, “dog food care”, and “packaged vegetables fruits”.
+
+The aisle variable was filtered first, and then the 'group_by' + 'summarize' function combination was used to calculate the number of products ordered per each of the three aisles of interest. The resulting dataframe was further filtered to only yield the maximum values of this calculation. Finally, the 'knitr::kable' function was used to export the final result onto a table. The most popular products within each of the three aisles are light broan sugar in the baking ingredients aisle, snack sticks chicken and rice recipe treats in the dog food care aisle and organic baby spinach in the packaged vegetables fruits aisle.
+```{r}
+instacart %>% 
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>% 
+  group_by(aisle, product_name) %>% 
+  summarize(total_product = n()) %>% 
+  filter(total_product == max(total_product)) %>% 
+  knitr::kable(digits = 1)
+```
+
+###     Make a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week; format this table for human readers (i.e. produce a 2 x 7 table).
+
+A filter was first applied to the product name variable to call only the two products of interest. Using the 'group_by' + 'summarize' function combination, the mean hour of the day was calculated. The 'spread' function was used to untidy the data in a more readable format, so that the day of the week spread horizontally and the mean hour of the day is tabulated vertically accross each day of the week for both products of interest. Finally, the 'knitr::kable' function is used to export the resulting table, with 2 rows and 7 columns.
+
+```{r}
+instacart %>% 
+  filter(product_name %in% c("Pink Lady Apples","Coffee Ice Cream")) %>% 
+  group_by(order_dow, product_name) %>%
+  summarise(mean_hour = mean(order_hour_of_day)) %>% 
+  spread(key = order_dow, value = mean_hour) %>% 
+  knitr::kable(digits = 1)
+```
+
+
 
 
 
